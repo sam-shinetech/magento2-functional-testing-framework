@@ -13,6 +13,7 @@ if (!empty($_POST['token']) && !empty($_POST['command'])) {
 
     $tokenPassedIn = urldecode($_POST['token']);
     $command = urldecode($_POST['command']);
+    $daemonCommand = $_POST['daemon'] ?? false;
 
     if (!empty($_POST['arguments'])) {
         $arguments = urldecode($_POST['arguments']);
@@ -27,15 +28,24 @@ if (!empty($_POST['token']) && !empty($_POST['command'])) {
         $magentoBinary = $php . ' -f ../../../../bin/magento';
         $valid = validateCommand($magentoBinary, $command);
         if ($valid) {
+            $outputArguments = " 2>&1";
+            if ($daemonCommand) {
+                // redirect output to null and detach from process once executed
+                $outputArguments = "> /dev/null 2>&1 &";
+            }
             exec(
-                escapeCommand($magentoBinary . " $command" . " $arguments") . " 2>&1",
+                escapeCommand($magentoBinary . " $command" . " $arguments") . $outputArguments,
                 $output,
                 $exitCode
             );
-            if ($exitCode == 0) {
+            if ($exitCode == 0 || $daemonCommand) {
                 http_response_code(202);
             } else {
                 http_response_code(500);
+            }
+
+            if ($daemonCommand) {
+                $output = ["CLI specified as Daemon command, no output available"];
             }
             echo implode("\n", $output);
         } else {

@@ -50,6 +50,13 @@
                         </xs:documentation>
                     </xs:annotation>
                 </xs:attribute>
+                <xs:attribute type="xs:boolean" name="daemon">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Flags CLI command as command that executes child daemon process. Will not wait for command and children to finish before continuing execution of test.
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
                 <xs:attributeGroup ref="commonActionAttributes"/>
             </xs:extension>
         </xs:simpleContent>

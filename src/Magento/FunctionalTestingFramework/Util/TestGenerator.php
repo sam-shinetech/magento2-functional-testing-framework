@@ -1246,11 +1246,13 @@ class TestGenerator
                     );
                     break;
                 case "magentoCLI":
+                    $daemonCommand = $actionObject->getCustomActionAttributes()['daemon'] ?? "false";
                     $testSteps .= $this->wrapFunctionCallWithReturnValue(
                         $stepKey,
                         $actor,
                         $actionObject,
                         $command,
+                        $daemonCommand,
                         $arguments
                     );
                     $testSteps .= sprintf(

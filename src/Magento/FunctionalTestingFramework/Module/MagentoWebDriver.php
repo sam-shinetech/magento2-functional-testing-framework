@@ -469,11 +469,12 @@ class MagentoWebDriver extends WebDriver
     /**
      * Takes given $command and executes it against exposed MTF CLI entry point. Returns response from server.
      * @param string $command
+     * @param boolean $daemonCommand
      * @param string $arguments
      * @throws TestFrameworkException
      * @return string
      */
-    public function magentoCLI($command, $arguments = null)
+    public function magentoCLI($command, $daemonCommand, $arguments = null)
     {
         // Remove index.php if it's present in url
         $baseUrl = rtrim(
@@ -489,6 +490,7 @@ class MagentoWebDriver extends WebDriver
             [
                 'token' => $restExecutor->getAuthToken(),
                 getenv('MAGENTO_CLI_COMMAND_PARAMETER') => $command,
+                'daemon' => $daemonCommand,
                 'arguments' => $arguments
             ],
             CurlInterface::POST,
