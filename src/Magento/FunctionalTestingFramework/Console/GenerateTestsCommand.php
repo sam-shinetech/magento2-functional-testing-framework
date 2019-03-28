@@ -103,11 +103,23 @@ class GenerateTestsCommand extends BaseGenerateCommand
         // METRICS GATHERING
         $testObjects = TestObjectHandler::getInstance()->getAllObjects();
         $totalTests = 0;
+        $testsBySeverity = [];
         $skippedTests = 0;
         $skippedTestName = [];
-        $skippedTestName[] = "MODULE|TESTCASEID|TESTNAME|SKIPPEDIDS";
+        $skippedTestName[] = "MODULE|TESTCASEID|TESTNAME|SEVERITY|SKIPPEDIDS";
         foreach ($testObjects as $testObject) {
             $totalTests++;
+
+            if (!isset($testObject->getAnnotations()['severity'][0])) {
+                $severity = "NO SEVERITY SPECIFIED";
+            } else {
+                $severity = $testObject->getAnnotations()['severity'][0];
+            }
+            if (!isset($testsBySeverity[$severity])) {
+                $testsBySeverity[$severity] = 0;
+            }
+            $testsBySeverity[$severity] += 1;
+
             if ($testObject->isSkipped()){
                 $skippedTests++;
                 $testCaseId = $testObject->getAnnotations()['testCaseId'] ?? ['NONE'];
@@ -121,35 +133,19 @@ class GenerateTestsCommand extends BaseGenerateCommand
                 $skippedTestName[] = $testObject->getAnnotations()['features'][0]
                     ."|" . $testCaseId[0]
                     ."|" . $testObject->getName()
+                    ."|" . $severity
                     ."|" . $skipString;
             }
         }
         print (PHP_EOL . "TOTAL TESTS (INCLUDING SKIPPED): {$totalTests}");
+        print (PHP_EOL . "TOTAL TESTS BY SEVERITY (INCLUDING SKIPPED):\n");
+        foreach ($testsBySeverity as $severity => $value) {
+            print ("\t\t{$severity}:\t{$value}\n");
+        }
         print (PHP_EOL . "SKIPPED TESTS: {$skippedTests}");
         print (PHP_EOL . "SKIPPED TESTS:" . PHP_EOL . implode(PHP_EOL, $skippedTestName));
         print (PHP_EOL);
         // END METRICS GATHERING
-
-
-
-
-
-        // create our manifest file here
-//        $testManifest = TestManifestFactory::makeManifest($config, $testConfiguration['suites']);
-//        TestGenerator::getInstance(null, $testConfiguration['tests'])->createAllTestFiles($testManifest);
-//
-//        if ($config == 'parallel') {
-//            /** @var ParallelTestManifest $testManifest */
-//            $testManifest->createTestGroups($time);
-//        }
-//
-//        if (empty($tests)) {
-//            SuiteGenerator::getInstance()->generateAllSuites($testManifest);
-//        }
-//
-//        $testManifest->generate();
-//
-//        $output->writeln("Generate Tests Command Run");
     }
 
     /**
