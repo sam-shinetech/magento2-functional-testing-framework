@@ -104,6 +104,7 @@ class GenerateTestsCommand extends BaseGenerateCommand
         $testObjects = TestObjectHandler::getInstance()->getAllObjects();
         $totalTests = 0;
         $testsBySeverity = [];
+        $skippedBySeverity = [];
         $skippedTests = 0;
         $skippedTestName = [];
         $skippedTestName[] = "MODULE|TESTCASEID|TESTNAME|SEVERITY|SKIPPEDIDS";
@@ -135,14 +136,26 @@ class GenerateTestsCommand extends BaseGenerateCommand
                     ."|" . $testObject->getName()
                     ."|" . $severity
                     ."|" . $skipString;
+
+                if (!isset($testObject->getAnnotations()['severity'][0])) {
+                    $severity = "NO SEVERITY SPECIFIED";
+                } else {
+                    $severity = $testObject->getAnnotations()['severity'][0];
+                }
+                if (!isset($skippedBySeverity[$severity])) {
+                    $skippedBySeverity[$severity] = 0;
+                }
+                $skippedBySeverity[$severity] += 1;
+
             }
         }
-        print (PHP_EOL . "TOTAL TESTS (INCLUDING SKIPPED): {$totalTests}");
+        print (PHP_EOL . "TOTAL TESTS (INCLUDING SKIPPED):\t{$totalTests}");
+        print (PHP_EOL . "SKIPPED TESTS:\t{$skippedTests}");
         print (PHP_EOL . "TOTAL TESTS BY SEVERITY (INCLUDING SKIPPED):\n");
         foreach ($testsBySeverity as $severity => $value) {
-            print ("\t\t{$severity}:\t{$value}\n");
+            $skipped = $skippedBySeverity[$severity] ?? 0;
+            print ("\t\t{$severity}:\t{$value}\t{$skipped}\n");
         }
-        print (PHP_EOL . "SKIPPED TESTS: {$skippedTests}");
         print (PHP_EOL . "SKIPPED TESTS:" . PHP_EOL . implode(PHP_EOL, $skippedTestName));
         print (PHP_EOL);
         // END METRICS GATHERING
