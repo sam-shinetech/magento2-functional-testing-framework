@@ -372,7 +372,7 @@ class MagentoWebDriver extends WebDriver
      */
     public function waitForPageLoad($timeout = null)
     {
-        $timeout = $timeout ?? $this->_getConfig()['pageload_timeout'];
+        $timeout = $this->_getConfig()['pageload_timeout'];
 
         $this->waitForJS('return document.readyState == "complete"', $timeout);
         $this->waitForAjaxLoad($timeout);
