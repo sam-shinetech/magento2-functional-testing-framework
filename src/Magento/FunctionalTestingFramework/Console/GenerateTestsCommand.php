@@ -101,6 +101,7 @@ class GenerateTestsCommand extends BaseGenerateCommand
         $testConfiguration = $this->createTestConfiguration($json, $tests, $force, $debug, $verbose);
 
         // METRICS GATHERING
+        $blackList = ['DevDocs'];
         $testObjects = TestObjectHandler::getInstance()->getAllObjects();
         $totalTests = 0;
         $testsBySeverity = [];
@@ -109,6 +110,9 @@ class GenerateTestsCommand extends BaseGenerateCommand
         $skippedTestName = [];
         $skippedTestName[] = "MODULE|TESTCASEID|TESTNAME|SEVERITY|SKIPPEDIDS";
         foreach ($testObjects as $testObject) {
+            if (array_search($testObject->getAnnotations()['features'][0], $blackList) !== false) {
+                continue;
+            }
             $totalTests++;
 
             if (!isset($testObject->getAnnotations()['severity'][0])) {
