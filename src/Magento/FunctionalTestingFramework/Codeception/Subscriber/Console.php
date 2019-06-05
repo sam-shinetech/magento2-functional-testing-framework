@@ -83,14 +83,16 @@ class Console extends \Codeception\Subscriber\Console
     {
         $stepKey = null;
         list($filePath, $stepLine) = explode(":", $stepLine);
-        $prevStepLine = $stepLine - 2;
 
         if (!array_key_exists($filePath, $this->testFiles)) {
             $this->testFiles[$filePath] = explode(PHP_EOL, file_get_contents($filePath));
         }
-        $testFile = $this->testFiles[$filePath];
+        $testLineTrimmed = substr(
+            $this->testFiles[$filePath][$stepLine-1],
+            strpos($this->testFiles[$filePath][$stepLine-1], TestGenerator::STEP_KEY_PREFIX)
+        );
 
-        list($stepKey) = sscanf($testFile[$prevStepLine], TestGenerator::STEP_KEY_ANNOTATION);
+        list($stepKey) = sscanf($testLineTrimmed, TestGenerator::STEP_KEY_ANNOTATION);
 
         return $stepKey;
     }

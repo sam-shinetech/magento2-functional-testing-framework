@@ -40,6 +40,7 @@ class TestGenerator
     const PRESSKEY_ARRAY_ANCHOR_KEY = '987654321098765432109876543210';
     const PERSISTED_OBJECT_NOTATION_REGEX = '/\${1,2}[\w.\[\]]+\${1,2}/';
     const NO_STEPKEY_ACTIONS = ['comment', 'createData', 'deleteData', 'updateData', 'getData'];
+    const STEP_KEY_PREFIX = " // StepKey:";
     const STEP_KEY_ANNOTATION = " // StepKey: %s";
 
     /**

@@ -243,8 +243,8 @@ class MagentoAllureAdapter extends AllureCodeception
             $this->testFiles[$filePath] = explode(PHP_EOL, file_get_contents($filePath));
         }
         $testLineTrimmed = substr(
-            $this->testFiles[$filePath][$stepLine],
-            strpos($this->testFiles[$filePath][$stepLine], '//')
+            $this->testFiles[$filePath][$stepLine-1],
+            strpos($this->testFiles[$filePath][$stepLine-1], TestGenerator::STEP_KEY_PREFIX)
         );
 
         list($stepKey) = sscanf($testLineTrimmed, TestGenerator::STEP_KEY_ANNOTATION);
