@@ -32,7 +32,12 @@ class RunTestCommand extends BaseGenerateCommand
                 'name',
                 InputArgument::REQUIRED | InputArgument::IS_ARRAY,
                 "name of tests to generate and execute"
-            )->addOption('skip-generate', 'k', InputOption::VALUE_NONE, "skip generation and execute existing test");
+            )->addOption(
+                'skip-generate',
+                'k',
+                InputOption::VALUE_NONE,
+                "skip generation and execute existing test"
+            );
 
         parent::configure();
     }
@@ -55,6 +60,7 @@ class RunTestCommand extends BaseGenerateCommand
         $remove = $input->getOption('remove');
         $debug = $input->getOption('debug') ?? MftfApplicationConfig::LEVEL_DEVELOPER; // for backward compatibility
         $allowSkipped = $input->getOption('allowSkipped');
+        $verbose = $output->isVerbose();
 
         if ($skipGeneration and $remove) {
             // "skip-generate" and "remove" options cannot be used at the same time
@@ -63,28 +69,45 @@ class RunTestCommand extends BaseGenerateCommand
             );
         }
 
+        // Set application configuration so we can references the user options in our framework
+        MftfApplicationConfig::create(
+            $force,
+            MftfApplicationConfig::EXECUTION_PHASE,
+            $verbose,
+            $debug,
+            $allowSkipped
+        );
+
+        $testConfiguration = $this->getTestAndSuiteConfiguration($tests);
+
         if (!$skipGeneration) {
             $command = $this->getApplication()->find('generate:tests');
             $args = [
-                '--tests' => json_encode([
-                    'tests' => $tests,
-                    'suites' => null
-                ]),
+                '--tests' => $testConfiguration,
                 '--force' => $force,
                 '--remove' => $remove,
                 '--debug' => $debug,
-                '--allowSkipped' => $allowSkipped
+                '--allowSkipped' => $allowSkipped,
+                '-v' => $verbose
             ];
             $command->run(new ArrayInput($args), $output);
         }
+        // tests with resolved suite references
+        $resolvedTests = $this->resolveSuiteReferences($testConfiguration);
 
-        $returnCode = 0;
         $codeceptionCommand = realpath(PROJECT_ROOT . '/vendor/bin/codecept') . ' run functional ';
         $testsDirectory = TESTS_MODULE_PATH . DIRECTORY_SEPARATOR . TestGenerator::GENERATED_DIR . DIRECTORY_SEPARATOR;
+        $returnCode = 0;
         //execute only tests specified as arguments in run command
-        foreach ($tests as $test) {
-            $testGroup = TestGenerator::DEFAULT_DIR . DIRECTORY_SEPARATOR;
-            $testName = $test . 'Cest.php';
+        foreach ($resolvedTests as $test) {
+            //set directory as suite name for tests in suite, if not set to "default"
+            if (strpos($test, ':')) {
+                list($testGroup, $testName) = explode(":", $test);
+            } else {
+                list($testGroup, $testName) = [TestGenerator::DEFAULT_DIR, $test];
+            }
+            $testGroup = $testGroup . DIRECTORY_SEPARATOR;
+            $testName = $testName . 'Cest.php';
             if (!realpath($testsDirectory . $testGroup . $testName)) {
                 throw new TestFrameworkException(
                     $testName . " is not available under " . $testsDirectory . $testGroup
@@ -103,5 +126,26 @@ class RunTestCommand extends BaseGenerateCommand
             ));
         }
         return $returnCode;
+    }
+
+    /**
+     * Get an array of tests with resolved suite references from $testConfiguration
+     * eg: if test is referenced in a suite, it'll be stored in format suite:test
+     * @param string $testConfigurationJson
+     * @return array
+     */
+    private function resolveSuiteReferences($testConfigurationJson)
+    {
+        $testConfiguration = json_decode($testConfigurationJson, true);
+        $testsArray = $testConfiguration['tests'] ?? [];
+        $suitesArray = $testConfiguration['suites'] ?? [];
+        $testArrayBuilder = [];
+
+        foreach ($suitesArray as $suite => $tests) {
+            foreach ($tests as $test) {
+                $testArrayBuilder[] = "$suite:$test";
+            }
+        }
+        return array_merge($testArrayBuilder, $testsArray);
     }
 }

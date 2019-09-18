@@ -54,7 +54,7 @@ class GenerateTestsCommand extends BaseGenerateCommand
     /**
      * Executes the current command.
      *
-     * @param InputInterface  $input
+     * @param InputInterface $input
      * @param OutputInterface $output
      * @return void
      * @throws TestFrameworkException
@@ -65,13 +65,26 @@ class GenerateTestsCommand extends BaseGenerateCommand
     {
         $tests = $input->getArgument('name');
         $config = $input->getOption('config');
-        $json = $input->getOption('tests');
+        $json = $input->getOption('tests'); // for backward compatibility
         $force = $input->getOption('force');
         $time = $input->getOption('time') * 60 * 1000; // convert from minutes to milliseconds
         $debug = $input->getOption('debug') ?? MftfApplicationConfig::LEVEL_DEVELOPER; // for backward compatibility
         $remove = $input->getOption('remove');
         $verbose = $output->isVerbose();
         $allowSkipped = $input->getOption('allowSkipped');
+
+        // Set application configuration so we can references the user options in our framework
+        MftfApplicationConfig::create(
+            $force,
+            MftfApplicationConfig::GENERATION_PHASE,
+            $verbose,
+            $debug,
+            $allowSkipped
+        );
+
+        if (!empty($tests)) {
+            $json = $this->getTestAndSuiteConfiguration($tests);
+        }
 
         if ($json !== null && !json_decode($json)) {
             // stop execution if we have failed to properly parse any json passed in by the user
@@ -89,12 +102,11 @@ class GenerateTestsCommand extends BaseGenerateCommand
                 ($debug !== MftfApplicationConfig::LEVEL_NONE));
         }
 
-        $testConfiguration = $this->createTestConfiguration($json, $tests, $force, $debug, $verbose, $allowSkipped);
 
         // METRICS GATHERING
         $perModule = true;
-        $moduleToTotalTest= [];
-        $moduleToSkippedTest= [];
+        $moduleToTotalTest = [];
+        $moduleToSkippedTest = [];
         $moduleToVersion = [];
         $blackList = ['DevDocs'];
         $testObjects = TestObjectHandler::getInstance()->getAllObjects();
@@ -124,22 +136,22 @@ class GenerateTestsCommand extends BaseGenerateCommand
                 if (!isset($moduleToTotalTest[$testObject->getAnnotations()['features'][0]])) {
                     $moduleToTotalTest[$testObject->getAnnotations()['features'][0]] = 1;
                 } else {
-                    $moduleToTotalTest[$testObject->getAnnotations()['features'][0]]+= 1;
+                    $moduleToTotalTest[$testObject->getAnnotations()['features'][0]] += 1;
                 }
             }
             $firstFilename = explode(',', $testObject->getFilename())[0];
             $realpath = realpath($firstFilename);
             if (strpos($realpath, 'magento2ce') !== false) {
                 $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'CE';
-            } elseif(strpos($realpath, 'magento2ee') !== false) {
+            } elseif (strpos($realpath, 'magento2ee') !== false) {
                 $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'EE';
-            } elseif(strpos($realpath, 'magento2b2b') !== false) {
+            } elseif (strpos($realpath, 'magento2b2b') !== false) {
                 $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'B2B';
-            } elseif(strpos($realpath, 'pagebuilder') !== false) {
+            } elseif (strpos($realpath, 'pagebuilder') !== false) {
                 $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'Pagebuilder';
             }
 
-            if ($testObject->isSkipped()){
+            if ($testObject->isSkipped()) {
                 $skippedTests++;
                 $testCaseId = $testObject->getAnnotations()['testCaseId'] ?? ['NONE'];
                 $skipString = "";
@@ -150,10 +162,10 @@ class GenerateTestsCommand extends BaseGenerateCommand
                     $skipString .= "NO ISSUES SPECIFIED";
                 }
                 $skippedTestName[] = $testObject->getAnnotations()['features'][0]
-                    ."|" . $testCaseId[0]
-                    ."|" . $testObject->getName()
-                    ."|" . $severity
-                    ."|" . $skipString;
+                    . "|" . $testCaseId[0]
+                    . "|" . $testObject->getName()
+                    . "|" . $severity
+                    . "|" . $skipString;
 
                 if (!isset($testObject->getAnnotations()['severity'][0])) {
                     $severity = "NO SEVERITY SPECIFIED";
@@ -169,7 +181,7 @@ class GenerateTestsCommand extends BaseGenerateCommand
                     if (!isset($moduleToSkippedTest[$testObject->getAnnotations()['features'][0]])) {
                         $moduleToSkippedTest[$testObject->getAnnotations()['features'][0]] = 1;
                     } else {
-                        $moduleToSkippedTest[$testObject->getAnnotations()['features'][0]]+= 1;
+                        $moduleToSkippedTest[$testObject->getAnnotations()['features'][0]] += 1;
                     }
                 }
 
@@ -182,97 +194,5 @@ class GenerateTestsCommand extends BaseGenerateCommand
             $skipped = $skippedBySeverity[$severity] ?? 0;
             print ("\t\t{$severity}:\t{$value}\t{$skipped}\n");
         }
-
-        if ($perModule) {
-            $total = array_sum($moduleToTotalTest);
-            $totalskip = array_sum($moduleToSkippedTest);
-            print (PHP_EOL . "TESTS PER MODULE: VERSION|MODULE|UNSKIPPED|SKIPPED");
-            foreach ($moduleToTotalTest as $module => $total) {
-                $skippedSet = 0;
-                $version = $moduleToVersion[$module];
-                if (isset($moduleToSkippedTest[$module])) {
-                    $skippedSet = $moduleToSkippedTest[$module];
-                }
-                $adjustedTotal = $total - $skippedSet;
-                print (PHP_EOL . "$version|$module|$adjustedTotal|$skippedSet");
-            }
-        }
-
-        print (PHP_EOL . "SKIPPED TESTS:" . PHP_EOL . implode(PHP_EOL, $skippedTestName));
-        print (PHP_EOL);
-        // END METRICS GATHERING
-    }
-
-    /**
-     * Function which builds up a configuration including test and suites for consumption of Magento generation methods.
-     *
-     * @param string  $json
-     * @param array   $tests
-     * @param boolean $force
-     * @param string  $debug
-     * @param boolean $verbose
-     * @param boolean $allowSkipped
-     * @return array
-     * @throws \Magento\FunctionalTestingFramework\Exceptions\TestReferenceException
-     * @throws \Magento\FunctionalTestingFramework\Exceptions\XmlException
-     */
-    private function createTestConfiguration(
-        $json,
-        array $tests,
-        bool $force,
-        string $debug,
-        bool $verbose,
-        bool $allowSkipped
-    ) {
-        // set our application configuration so we can references the user options in our framework
-        MftfApplicationConfig::create(
-            $force,
-            MftfApplicationConfig::GENERATION_PHASE,
-            $verbose,
-            $debug,
-            $allowSkipped
-        );
-
-        $testConfiguration = [];
-        $testConfiguration['tests'] = $tests;
-        $testConfiguration['suites'] = [];
-
-        $testConfiguration = $this->parseTestsConfigJson($json, $testConfiguration);
-
-        // if we have references to specific tests, we resolve the test objects and pass them to the config
-        if (!empty($testConfiguration['tests'])) {
-            $testObjects = [];
-
-            foreach ($testConfiguration['tests'] as $test) {
-                $testObjects[$test] = TestObjectHandler::getInstance()->getObject($test);
-            }
-
-            $testConfiguration['tests'] = $testObjects;
-        }
-
-        return $testConfiguration;
-    }
-
-    /**
-     * Function which takes a json string of potential custom configuration and parses/validates the resulting json
-     * passed in by the user. The result is a testConfiguration array.
-     *
-     * @param string $json
-     * @param array  $testConfiguration
-     * @return array
-     */
-    private function parseTestsConfigJson($json, array $testConfiguration)
-    {
-        if ($json === null) {
-            return $testConfiguration;
-        }
-
-        $jsonTestConfiguration = [];
-        $testConfigArray = json_decode($json, true);
-
-        $jsonTestConfiguration['tests'] = $testConfigArray['tests'] ?? null;
-        ;
-        $jsonTestConfiguration['suites'] = $testConfigArray['suites'] ?? null;
-        return $jsonTestConfiguration;
     }
 }
