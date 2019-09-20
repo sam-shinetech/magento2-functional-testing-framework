@@ -115,7 +115,7 @@ class GenerateTestsCommand extends BaseGenerateCommand
         $skippedBySeverity = [];
         $skippedTests = 0;
         $skippedTestName = [];
-        $skippedTestName[] = "MODULE|TESTCASEID|TESTNAME|SEVERITY|SKIPPEDIDS";
+        $skippedTestName[] = "VERSION|MODULE|TESTCASEID|TESTNAME|SEVERITY|SKIPPEDIDS";
         foreach ($testObjects as $testObject) {
             if (array_search($testObject->getAnnotations()['features'][0], $blackList) !== false) {
                 continue;
@@ -141,14 +141,17 @@ class GenerateTestsCommand extends BaseGenerateCommand
             }
             $firstFilename = explode(',', $testObject->getFilename())[0];
             $realpath = realpath($firstFilename);
-            if (strpos($realpath, 'magento2ce') !== false) {
+
+            if (strpos($realpath, '/Inventory') !== false) {
+                $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'MSI';
+            } elseif (strpos($realpath, 'magento2ce') !== false) {
                 $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'CE';
             } elseif (strpos($realpath, 'magento2ee') !== false) {
                 $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'EE';
             } elseif (strpos($realpath, 'magento2b2b') !== false) {
                 $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'B2B';
-            } elseif (strpos($realpath, 'pagebuilder') !== false) {
-                $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'Pagebuilder';
+            } elseif (strpos($realpath, 'PageBuilder') !== false) {
+                $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'PB';
             }
 
             if ($testObject->isSkipped()) {
@@ -161,7 +164,9 @@ class GenerateTestsCommand extends BaseGenerateCommand
                 } else {
                     $skipString .= "NO ISSUES SPECIFIED";
                 }
-                $skippedTestName[] = $testObject->getAnnotations()['features'][0]
+
+                $skippedTestName[] = $moduleToVersion[$testObject->getAnnotations()['features'][0]]
+                    . "|" . $testObject->getAnnotations()['features'][0]
                     . "|" . $testCaseId[0]
                     . "|" . $testObject->getName()
                     . "|" . $severity
@@ -194,5 +199,24 @@ class GenerateTestsCommand extends BaseGenerateCommand
             $skipped = $skippedBySeverity[$severity] ?? 0;
             print ("\t\t{$severity}:\t{$value}\t{$skipped}\n");
         }
+        if ($perModule) {
+            $total = array_sum($moduleToTotalTest);
+            $totalskip = array_sum($moduleToSkippedTest);
+            print (PHP_EOL . PHP_EOL . "TESTS PER MODULE: VERSION|MODULE|UNSKIPPED|SKIPPED");
+            foreach ($moduleToTotalTest as $module => $total) {
+                $skippedSet = 0;
+                $version = $moduleToVersion[$module];
+                if (isset($moduleToSkippedTest[$module])) {
+                    $skippedSet = $moduleToSkippedTest[$module];
+                }
+                $adjustedTotal = $total - $skippedSet;
+                print (PHP_EOL . "$version|$module|$adjustedTotal|$skippedSet");
+            }
+        }
+
+
+        print (PHP_EOL . PHP_EOL . "SKIPPED TESTS:" . PHP_EOL . implode(PHP_EOL, $skippedTestName));
+        print (PHP_EOL);
+        // END METRICS GATHERING
     }
 }
