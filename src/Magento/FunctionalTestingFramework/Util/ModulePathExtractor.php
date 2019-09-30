@@ -32,68 +32,127 @@ class ModulePathExtractor
     }
 
     /**
-     * Extracts module name from the path given
+     * Extracts all module names from the path given
+     *
+     * @param string $path
+     * @return string[]
+     */
+    public function extractAllModuleNames($path)
+    {
+        $moduleNames = [];
+
+        $keys = $this->extractKeysByPath($path);
+        if (empty($keys)) {
+            return $moduleNames;
+        }
+
+        $parts = $this->splitKeysForParts($keys);
+
+        foreach ($parts as $part) {
+            if (isset($part[1])) {
+                $moduleNames[] = $part[1];
+            }
+        }
+        return $moduleNames;
+    }
+
+    /**
+     * Extracts all vendor names for module from the path given
+     *
+     * @param string $path
+     * @return string[]
+     */
+    public function getAllExtensions($path)
+    {
+        $extensions = [];
+
+        $keys = $this->extractKeysByPath($path);
+        if (empty($keys)) {
+            return $extensions;
+        }
+
+        $parts = $this->splitKeysForParts($keys);
+
+        foreach ($parts as $part) {
+            if (isset($part[0])) {
+                $extensions[] = $part[0];
+            }
+        }
+        return $extensions;
+    }
+
+    /**
+     * @deprecated
+     *
+     * Extracts first module name from the path given
      *
      * @param string $path
      * @return string
      */
     public function extractModuleName($path)
     {
-        $key = $this->extractKeyByPath($path);
-        if (empty($key)) {
+        $keys = $this->extractKeysByPath($path);
+        if (empty($keys)) {
             return "NO MODULE DETECTED";
         }
-        $parts = $this->splitKeyForParts($key);
-        return isset($parts[1]) ? $parts[1] : "NO MODULE DETECTED";
+        $parts = $this->splitKeysForParts($keys);
+        return isset($parts[0][1]) ? $parts[0][1] : "NO MODULE DETECTED";
     }
 
     /**
-     * Extracts vendor name for module from the path given
+     * @deprecated
+     *
+     * Extracts the first vendor name for module from the path given
      *
      * @param string $path
      * @return string
      */
     public function getExtensionPath($path)
     {
-        $key = $this->extractKeyByPath($path);
-        if (empty($key)) {
+        $keys = $this->extractKeysByPath($path);
+        if (empty($keys)) {
             return "NO VENDOR DETECTED";
         }
-        $parts = $this->splitKeyForParts($key);
-        return isset($parts[0]) ? $parts[0] : "NO VENDOR DETECTED";
+        $parts = $this->splitKeysForParts($keys);
+        return isset($parts[0][0]) ? $parts[0][0] : "NO VENDOR DETECTED";
     }
 
     /**
-     * Split key by SPLIT_DELIMITER and return parts array
+     * Split keys by SPLIT_DELIMITER and return parts array for all keys
      *
-     * @param string $key
+     * @param array $keys
      * @return array
      */
-    private function splitKeyForParts($key)
+    private function splitKeysForParts($keys)
     {
-        $parts = explode(self::SPLIT_DELIMITER, $key);
-        return count($parts) == 2 ? $parts : [];
+        $partsArray = [];
+        foreach ($keys as $key) {
+            $parts = explode(self::SPLIT_DELIMITER, $key);
+            $partsArray[] = count($parts) == 2 ? $parts : [];
+        }
+
+        return $partsArray;
     }
 
     /**
-     * Extract module name key by path
+     * Extract module name keys by path
      *
      * @param string $path
-     * @return string
+     * @return array
      */
-    private function extractKeyByPath($path)
+    private function extractKeysByPath($path)
     {
         $shortenedPath = dirname(dirname($path));
         // Ignore this path if we cannot go to parent directory two levels up
         if (empty($shortenedPath) || $shortenedPath === '.') {
-            return '';
+            return [];
         }
 
-        foreach ($this->testModulePaths as $key => $value) {
-            if ($value == $shortenedPath) {
-                return $key;
+        foreach ($this->testModulePaths as $path => $keys) {
+            if ($path == $shortenedPath) {
+                return $keys;
             }
         }
-        return '';
+        return [];
     }
 }

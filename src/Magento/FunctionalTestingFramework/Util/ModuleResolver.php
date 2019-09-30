@@ -77,7 +77,7 @@ class ModuleResolver
      *
      * @var array|null
      */
-    protected $enabledModuleNameAndPaths = null;
+    protected $enabledModulePathsAndNames = null;
 
     /**
      * Configuration instance.
@@ -240,8 +240,8 @@ class ModuleResolver
             return $this->enabledModulePaths;
         }
 
-        if (isset($this->enabledModuleNameAndPaths) && $verbosePath) {
-            return $this->enabledModuleNameAndPaths;
+        if (isset($this->enabledModulePathsAndNames) && $verbosePath) {
+            return $this->enabledModulePathsAndNames;
         }
 
         // Find test modules paths by searching patterns (Test/Mftf, etc)
@@ -263,13 +263,12 @@ class ModuleResolver
         $allModulePaths = $this->normalizeModuleNames($allModulePaths);
 
         if (MftfApplicationConfig::getConfig()->forceGenerateEnabled()) {
-            $allModulePaths = $this->flipAndFilterModulePathsArray($allModulePaths);
             $this->enabledModulePaths = $this->applyCustomModuleMethods($allModulePaths);
             return $this->enabledModulePaths;
         }
 
         $enabledModules = array_merge($this->getEnabledModules(), $this->getModuleWhitelist());
-        $enabledDirectoryPaths = $this->flipAndFilterModulePathsArray($allModulePaths, $enabledModules);
+        $enabledDirectoryPaths = $this->filterPathsArrayByEnabledModules($allModulePaths, $enabledModules);
         $this->enabledModulePaths = $this->applyCustomModuleMethods($enabledDirectoryPaths);
 
         return $this->enabledModulePaths;
@@ -492,46 +491,27 @@ class ModuleResolver
     }
 
     /**
-     * Flip and filter module code paths
+     * Filter path array by enable Magento modules
      *
      * @param array $objectArray
      * @param array $filterArray
      * @return array
      * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
-    private function flipAndFilterModulePathsArray($objectArray, $filterArray = null)
+    private function filterPathsArrayByEnabledModules($objectArray, $filterArray)
     {
-        $flippedArray = [];
+        $resultArray = [];
         foreach ($objectArray as $path => $modules) {
-            // One path maps to one module
-            if (count($modules) == 1) {
-                if (!is_array($filterArray)
-                    || (is_array($filterArray) && in_array($modules[0], $filterArray))
-                    || isset($this->knownDirectories[$modules[0]])) {
-                    if (strpos($modules[0], '_') === false) {
-                        $modules[0] = $this->findVendorNameFromPath($path) . '_' . $modules[0];
-                    }
-                    $flippedArray[$modules[0]] = $path;
-                }
+            if (array_intersect($modules, $filterArray) == $modules) {
+                $resultArray[$path] = $modules;
             } else {
-                // One path maps to multiple modules
-                if (!is_array($filterArray)) {
-                    $flippedArray[$this->findVendorAndModuleNameFromPath($path)] = $path;
-                } else {
-                    $skip = false;
-                    foreach ($modules as $module) {
-                        if (!in_array($module, $filterArray)) {
-                            $skip = true;
-                            break;
-                        }
-                    }
-                    if (!$skip) {
-                        $flippedArray[$this->findVendorAndModuleNameFromPath($path)] = $path;
-                    }
+                $diff = array_diff($modules, $filterArray);
+                if (array_intersect($diff, array_keys($this->knownDirectories)) == $diff) {
+                    $resultArray[$path] = $modules;
                 }
             }
         }
-        return $flippedArray;
+        return $resultArray;
     }
 
     /**
@@ -554,7 +534,7 @@ class ModuleResolver
     }
 
     /**
-     * Normalize module name if registered module list is available
+     * Normalize module name from registered module list if it is available
      *
      * @param array $codePaths
      *
@@ -581,21 +561,43 @@ class ModuleResolver
     }
 
     /**
-     * Takes a multidimensional array of module paths and flattens to return a one dimensional array of test paths
+     * Format module name as 'VendorName_ModuleName' if it's not already in the right format
      *
-     * @param array $modulePaths
+     * @param array $codePaths
+     *
      * @return array
      */
-    private function flattenAllModulePaths($modulePaths)
+    private function formatModuleNames($codePaths)
     {
-        $it = new \RecursiveIteratorIterator(new \RecursiveArrayIterator($modulePaths));
-        $resultArray = [];
-
-        foreach ($it as $value) {
-            $resultArray[] = $value;
+        $returnCodePath = [];
+        foreach ($codePaths as $path => $moduleNames) {
+            foreach ($moduleNames as $moduleName) {
+                $returnCodePath[$path][] = $this->formatModuleName($moduleName, $path);
+            }
         }
+        return $returnCodePath;
+    }
 
-        return $resultArray;
+    /**
+     * Format module name as 'VendorName_ModuleName' if it's not already in the right format
+     *
+     * @param string $moduleName
+     * @param string $path
+     *
+     * @return string
+     */
+    private function formatModuleName($moduleName, $path)
+    {
+        $regex = '~(?<vendor>[^_\s]+)_(?<module>[^_\s]+)~';
+        preg_match($regex, $moduleName, $match);
+        if (isset($match['vendor']) && isset($match['module'])) {
+            $vendor = $match['vendor'];
+            $module = $match['module'];
+        } else {
+            $vendor = $this->findVendorNameFromPath($path);
+            $module = $moduleName;
+        }
+        return $vendor . '_' . $module;
     }
 
     /**
@@ -701,20 +703,24 @@ class ModuleResolver
         $customModulePaths = $this->getCustomModulePaths();
 
         array_map(function ($key, $value) {
-            LoggingUtil::getInstance()->getLogger(ModuleResolver::class)->info(
-                "including custom module",
-                [$key => $value]
-            );
+            if (isset($value[0])) {
+                LoggingUtil::getInstance()->getLogger(ModuleResolver::class)->info(
+                    "including custom module",
+                    [$value[0] => $key]
+                );
+            }
         }, array_keys($customModulePaths), $customModulePaths);
 
-        if (!isset($this->enabledModuleNameAndPaths)) {
-            $this->enabledModuleNameAndPaths = array_merge($modulePathsResult, $customModulePaths);
+        if (!isset($this->enabledModulePathsAndNames)) {
+            $this->enabledModulePathsAndNames = $this->formatModuleNames(
+                array_merge($modulePathsResult, $customModulePaths)
+            );
         }
-        return $this->flattenAllModulePaths(array_merge($modulePathsResult, $customModulePaths));
+        return array_keys((array_merge($modulePathsResult, $customModulePaths)));
     }
 
     /**
-     * Remove blacklist modules from input module paths.
+     * Remove path if any of path's modules is in blacklist
      *
      * @param array $modulePaths
      * @return string[]
@@ -722,15 +728,19 @@ class ModuleResolver
     private function removeBlacklistModules($modulePaths)
     {
         $modulePathsResult = $modulePaths;
-        foreach ($modulePathsResult as $moduleName => $modulePath) {
-            // Remove module if it is in blacklist
-            if (in_array($moduleName, $this->getModuleBlacklist())) {
-                unset($modulePathsResult[$moduleName]);
-                LoggingUtil::getInstance()->getLogger(ModuleResolver::class)->info(
-                    "excluding module",
-                    ['module' => $moduleName]
-                );
+        foreach ($modulePathsResult as $path => $modules) {
+            // Remove path if any of path's modules is in blacklist
+            foreach ($modules as $module) {
+                if (in_array($module, $this->getModuleBlacklist())) {
+                    unset($modulePathsResult[$path]);
+                    LoggingUtil::getInstance()->getLogger(ModuleResolver::class)->info(
+                        "excluding module",
+                        [$module => $path]
+                    );
+                    break;
+                }
             }
+
         }
 
         return $modulePathsResult;
@@ -751,7 +761,7 @@ class ModuleResolver
         }
 
         foreach (explode(',', $paths) as $path) {
-            $customModulePaths = [$this->findVendorAndModuleNameFromPath(trim($path)) => $path];
+            $customModulePaths[$path][] = $this->findVendorAndModuleNameFromPath(trim($path));
         }
 
         return $customModulePaths;
