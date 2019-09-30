@@ -740,7 +740,6 @@ class ModuleResolver
                     break;
                 }
             }
-
         }
 
         return $modulePathsResult;

@@ -18,7 +18,7 @@ class MockModuleResolverBuilder
      *
      * @var array
      */
-    private $defaultPaths = ['Magento_Module' => '/base/path/some/other/path/Magento/Module'];
+    private $defaultPaths = [ '/base/path/some/other/path/Magento/Module' => ['Magento_Module']];
 
     /**
      * Mock ModuleResolver builder
@@ -54,7 +54,7 @@ class MockModuleResolverBuilder
         AspectMock::double(ObjectManagerFactory::class, ['getObjectManager' => $instance]);
 
         $resolver = ModuleResolver::getInstance();
-        $property = new \ReflectionProperty(ModuleResolver::class, 'enabledModuleNameAndPaths');
+        $property = new \ReflectionProperty(ModuleResolver::class, 'enabledModulePathsAndNames');
         $property->setAccessible(true);
         $property->setValue($resolver, $paths);
     }

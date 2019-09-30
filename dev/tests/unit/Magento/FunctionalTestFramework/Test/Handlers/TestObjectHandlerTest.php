@@ -181,7 +181,7 @@ class TestObjectHandlerTest extends MagentoTestCase
             ->build();
 
         $resolverMock = new MockModuleResolverBuilder();
-        $resolverMock->setup(['Vendor_' . $moduleExpected => $filepath]);
+        $resolverMock->setup([$filepath => ['Vendor_' . $moduleExpected]]);
 
         $this->setMockParserOutput(['tests' => $mockData]);
         // Execute Test Method
