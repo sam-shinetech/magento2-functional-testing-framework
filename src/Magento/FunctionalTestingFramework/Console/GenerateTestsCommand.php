@@ -117,14 +117,14 @@ class GenerateTestsCommand extends BaseGenerateCommand
         $skippedTestName = [];
         $skippedTestName[] = "VERSION|MODULE|TESTCASEID|TESTNAME|SEVERITY|SKIPPEDIDS";
         foreach ($testObjects as $testObject) {
-            if (array_search($testObject->getAnnotations()['features'][0], $blackList) !== false) {
+            $module = $testObject->getAnnotations()['features'][0];
+            if (array_search($module, $blackList) !== false) {
                 continue;
             }
             $totalTests++;
 
-            if (!isset($testObject->getAnnotations()['severity'][0])) {
-                $severity = "NO SEVERITY SPECIFIED";
-            } else {
+            $severity = "NO SEVERITY SPECIFIED";
+            if (isset($testObject->getAnnotations()['severity'][0])) {
                 $severity = $testObject->getAnnotations()['severity'][0];
             }
             if (!isset($testsBySeverity[$severity])) {
@@ -133,65 +133,59 @@ class GenerateTestsCommand extends BaseGenerateCommand
             $testsBySeverity[$severity] += 1;
 
             if ($perModule) {
-                if (!isset($moduleToTotalTest[$testObject->getAnnotations()['features'][0]])) {
-                    $moduleToTotalTest[$testObject->getAnnotations()['features'][0]] = 1;
+                if (!isset($moduleToTotalTest[$module])) {
+                    $moduleToTotalTest[$module] = 1;
                 } else {
-                    $moduleToTotalTest[$testObject->getAnnotations()['features'][0]] += 1;
+                    $moduleToTotalTest[$module] += 1;
+                }
+                if ($testObject->isSkipped()) {
+                    if (!isset($moduleToSkippedTest[$module])) {
+                        $moduleToSkippedTest[$module] = 1;
+                    } else {
+                        $moduleToSkippedTest[$module] += 1;
+                    }
                 }
             }
+
             $firstFilename = explode(',', $testObject->getFilename())[0];
             $realpath = realpath($firstFilename);
 
             if (strpos($realpath, '/Inventory') !== false) {
-                $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'MSI';
+                $moduleToVersion[$module] = 'MSI';
             } elseif (strpos($realpath, 'magento2ce') !== false) {
-                $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'CE';
+                $moduleToVersion[$module] = 'CE';
             } elseif (strpos($realpath, 'magento2ee') !== false) {
-                $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'EE';
+                $moduleToVersion[$module] = 'EE';
             } elseif (strpos($realpath, 'magento2b2b') !== false) {
-                $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'B2B';
+                $moduleToVersion[$module] = 'B2B';
             } elseif (strpos($realpath, 'PageBuilder') !== false) {
-                $moduleToVersion[$testObject->getAnnotations()['features'][0]] = 'PB';
+                $moduleToVersion[$module] = 'PB';
             }
 
             if ($testObject->isSkipped()) {
                 $skippedTests++;
                 $testCaseId = $testObject->getAnnotations()['testCaseId'] ?? ['NONE'];
                 $skipString = "";
-                $issues = $testObject->getAnnotations()['skip'] ?? null;
-                if (isset($issues)) {
-                    $skipString .= implode(",", $issues);
-                } else {
-                    $skipString .= "NO ISSUES SPECIFIED";
+                $issues = "NO ISSUES SPECIFIED";
+                if (isset($testObject->getAnnotations()['skip'])) {
+                    $issues = implode(",", $testObject->getAnnotations()['skip']);
                 }
+                $skipString .= $issues;
 
-                $skippedTestName[] = $moduleToVersion[$testObject->getAnnotations()['features'][0]]
-                    . "|" . $testObject->getAnnotations()['features'][0]
+                $skippedTestName[] = $moduleToVersion[$module]
+                    . "|" . $module
                     . "|" . $testCaseId[0]
                     . "|" . $testObject->getName()
                     . "|" . $severity
                     . "|" . $skipString;
 
-                if (!isset($testObject->getAnnotations()['severity'][0])) {
-                    $severity = "NO SEVERITY SPECIFIED";
-                } else {
-                    $severity = $testObject->getAnnotations()['severity'][0];
-                }
                 if (!isset($skippedBySeverity[$severity])) {
                     $skippedBySeverity[$severity] = 0;
                 }
                 $skippedBySeverity[$severity] += 1;
-
-                if ($perModule) {
-                    if (!isset($moduleToSkippedTest[$testObject->getAnnotations()['features'][0]])) {
-                        $moduleToSkippedTest[$testObject->getAnnotations()['features'][0]] = 1;
-                    } else {
-                        $moduleToSkippedTest[$testObject->getAnnotations()['features'][0]] += 1;
-                    }
-                }
-
             }
         }
+
         print (PHP_EOL . "TOTAL TESTS (INCLUDING SKIPPED):\t{$totalTests}");
         print (PHP_EOL . "SKIPPED TESTS:\t{$skippedTests}");
         print (PHP_EOL . "TOTAL TESTS BY SEVERITY (INCLUDING SKIPPED):\n");
@@ -199,13 +193,14 @@ class GenerateTestsCommand extends BaseGenerateCommand
             $skipped = $skippedBySeverity[$severity] ?? 0;
             print ("\t\t{$severity}:\t{$value}\t{$skipped}\n");
         }
+
+        asort($moduleToVersion);
         if ($perModule) {
             $total = array_sum($moduleToTotalTest);
             $totalskip = array_sum($moduleToSkippedTest);
             print (PHP_EOL . PHP_EOL . "TESTS PER MODULE: VERSION|MODULE|UNSKIPPED|SKIPPED");
-            foreach ($moduleToTotalTest as $module => $total) {
+            foreach ($moduleToVersion as $module => $version) {
                 $skippedSet = 0;
-                $version = $moduleToVersion[$module];
                 if (isset($moduleToSkippedTest[$module])) {
                     $skippedSet = $moduleToSkippedTest[$module];
                 }
