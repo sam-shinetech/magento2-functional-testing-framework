@@ -817,7 +817,7 @@ class ModuleResolver
      */
     private function getBackendUrl()
     {
-        return getenv('MAGENTO_BACKEND_BASE_URL') ?: getenv('MAGENTO_BASE_URL');
+        return getenv('MAGENTO_BASE_URL');
     }
 
     /**
