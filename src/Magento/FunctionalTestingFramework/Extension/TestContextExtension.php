@@ -174,7 +174,7 @@ class TestContextExtension extends BaseExtension
      */
     public function afterStep(\Codeception\Event\StepEvent $e)
     {
-        if (getenv('ENABLE_JS_LOG')) {
+        if (true) {
             $browserLogEntries = $this->getDriver()->webDriver->manage()->getLog("browser");
             $jsErrors = ErrorLogger::getInstance()->getLogsOfType($browserLogEntries, ErrorLogger::ERROR_TYPE_JAVASCRIPT);
             if (!empty($jsErrors)) {
