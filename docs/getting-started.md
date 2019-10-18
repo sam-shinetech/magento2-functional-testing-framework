@@ -10,14 +10,15 @@ The latest Magento 2.2 release supports MFTF 2.3.8.
 
 Make sure that you have the following software installed and configured on your development environment:
 
-- [PHP version supported by the Magento instance under test][php]
-- [Composer 1.3 or later][composer]
-- [Java 1.8 or later][java]
-- [Selenium Server Standalone 3.1 or later][selenium server] and [ChromeDriver 2.33 or later][chrome driver] or other webdriver in the same directory
+-  [PHP version supported by the Magento instance under test][php]
+-  [Composer 1.3 or later][composer]
+-  [Java 1.8 or later][java]
+-  [Selenium Server Standalone 3.1 or later][selenium server] and [ChromeDriver 2.33 or later][chrome driver] or other webdriver in the same directory
 
 <div class="bs-callout bs-callout-tip" markdown="1">
 [PhpStorm] supports [Codeception test execution][], which is helpful when debugging.
 </div>
+
 ## Install Magento {#install-magento}
 
 Use instructions below to install Magento.
@@ -67,11 +68,17 @@ To disable the WYSIWYG and enable the web driver to process these fields as simp
 3. In the WYSIWYG Options section set the **Enable WYSIWYG Editor** option to **Disabled Completely**.
 4. Click **Save Config**.
 
+or via command line:
+
+```bash
+bin/magento config:set cms/wysiwyg/enabled disabled
+```
+
 <div class="bs-callout bs-callout-tip">
 When you want to test the WYSIWYG functionality, re-enable WYSIWYG in your test suite.
 </div>
 
-### Security settings   {#security-settings}
+### Security settings {#security-settings}
 
 To enable the **Admin Account Sharing** setting, to avoid unpredictable logout during a testing session, and disable the **Add Secret Key in URLs** setting, to open pages using direct URLs:
 
@@ -79,6 +86,16 @@ To enable the **Admin Account Sharing** setting, to avoid unpredictable logout d
 2. Set **Admin Account Sharing** to **Yes**.
 3. Set **Add Secret Key to URLs** to **No**.
 4. Click **Save Config**.
+
+or via command line:
+
+```bash
+bin/magento config:set admin/security/admin_account_sharing 1
+```
+
+```bash
+bin/magento config:set admin/security/use_form_key 0
+```
 
 ### Nginx settings {#nginx-settings}
 
@@ -147,16 +164,16 @@ vim dev/tests/acceptance/.env
 
 Specify the following parameters, which are required to launch tests:
 
-- `MAGENTO_BASE_URL` must contain a domain name of the Magento instance that will be tested.
+-  `MAGENTO_BASE_URL` must contain a domain name of the Magento instance that will be tested.
   Example: `MAGENTO_BASE_URL=http://magento.test`
 
-- `MAGENTO_BACKEND_NAME` must contain the relative path for the Admin area.
+-  `MAGENTO_BACKEND_NAME` must contain the relative path for the Admin area.
   Example: `MAGENTO_BACKEND_NAME=admin`
 
-- `MAGENTO_ADMIN_USERNAME` must contain the username required for authorization in the Admin area.
+-  `MAGENTO_ADMIN_USERNAME` must contain the username required for authorization in the Admin area.
   Example: `MAGENTO_ADMIN_USERNAME=admin`
 
-- `MAGENTO_ADMIN_PASSWORD` must contain the user password required for authorization in the Admin area.
+-  `MAGENTO_ADMIN_PASSWORD` must contain the user password required for authorization in the Admin area.
   Example: `MAGENTO_ADMIN_PASSWORD=123123q`
 
 <div class="bs-callout bs-callout-info" markdown="1">
@@ -222,8 +239,8 @@ During testing, the MFTF generates test reports in CLI.
 You can generate visual representations of the report data using [Allure Framework][].
 To view the reports in GUI:
 
-- [Install Allure][]
-- Run the tool to serve the artifacts in `dev/tests/acceptance/tests/_output/allure-results/`:
+-  [Install Allure][]
+-  Run the tool to serve the artifacts in `dev/tests/acceptance/tests/_output/allure-results/`:
 
 ```bash
 allure serve dev/tests/acceptance/tests/_output/allure-results/
