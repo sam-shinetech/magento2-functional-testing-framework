@@ -57,7 +57,7 @@ abstract class AbstractIterator implements \Iterator, \Countable
      */
     public function rewind()
     {
-        reset($this->data);
+        $this->current = reset($this->data);
         if (!$this->isValid()) {
             $this->next();
         }
