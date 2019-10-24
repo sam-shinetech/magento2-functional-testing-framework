@@ -14,6 +14,17 @@ use Sabre\Xml\Service;
 
 class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\Filesystem
 {
+    const CACHE_DIR = TESTS_BP . "/_cache/";
+    const CACHE_DATA_DIR = self::CACHE_DIR . "data/";
+
+    const SCOPE_TO_ARRAY_KEY = [
+        'Test' => 'tests',
+        'Page' => 'page',
+        'Section' => 'section',
+        'Data' => 'entity',
+        'ActionGroup' => 'actionGroups'
+    ];
+
     /**
      * Method to redirect file name passing into Dom class
      *
@@ -46,20 +57,8 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
 
         // Read cache before anything else
         $output = null;
-        if (is_file(TESTS_BP . '/_cache/data/' . $this->defaultScope)) {
-            $output = $this->readCache(TESTS_BP . '/_cache/data/' . $this->defaultScope);
-        }
-
-        // Go straight to parsing if cache doesn't exist
-        // Temporary to find parent key
-        if ($output !== null) {
-            $entityArrayKey = '';
-            foreach ($output as $key => $value) {
-                if (is_array($value)) {
-                    $entityArrayKey = $key;
-                    break;
-                }
-            }
+        if (is_dir(self::CACHE_DATA_DIR . $this->defaultScope)) {
+            $output = $this->readCache(self::CACHE_DATA_DIR . $this->defaultScope);
         }
 
         // First pass to find changed files
@@ -93,7 +92,7 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
                     }
                     $filesToRead[$otherFile] = time();
                 }
-                unset($output[$entityArrayKey][$entityKey]);
+                unset($output[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]][$entityKey]);
             }
         }
 
@@ -142,17 +141,9 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
 
         // Rebuild cache
         if ($cacheInvalidated) {
-            // TEMPORARY to find root element
-            $entityArrayKey = '';
-            foreach ($output as $key => $value) {
-                if (is_array($value)) {
-                    $entityArrayKey = $key;
-                    break;
-                }
-            }
             // Last pass to rebuild entity->filename relationship
             $entityToFiles = [];
-            foreach ($output[$entityArrayKey] as $key => $entity) {
+            foreach ($output[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]] as $key => $entity) {
                 if (!is_array($entity)) {
                     continue;
                 }
@@ -161,7 +152,7 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
             foreach ($filesToRead as $file => $time) {
                 $fileToTime[$file] = $time;
             }
-            $this->buildCache($output, TESTS_BP . '/_cache/data/' . $this->defaultScope);
+            $this->buildCache($output, $this->defaultScope);
             $this->rewriteCache($fileToTime, $fileToTimePath);
             $this->rewriteCache($entityToFiles, $entityToFilesPath);
         }
@@ -223,24 +214,38 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
         file_put_contents($filename, $string);
     }
 
-    protected function readCache($filename)
+    protected function readCache($cachePath)
     {
-        return json_decode(file_get_contents($filename), true);
-
-    }
-
-    protected function buildCache($contents, $filename)
-    {
-        $json = json_encode($contents);
-        if (is_file($filename)) {
-            unlink($filename);
+        $contents[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]] = [];
+        foreach (array_slice(scandir($cachePath), 2) as $cacheFile) {
+            $contents[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]][$cacheFile] = json_decode(file_get_contents($cachePath . '/' . $cacheFile), true);
         }
-        file_put_contents($filename, $json);
+        return $contents;
     }
 
-    protected function invalidateEntity($contents, $entityName)
+    protected function buildCache($contents, $type)
     {
+        $cacheDir = self::CACHE_DATA_DIR . $type . "/";
+        if (!is_dir($cacheDir)) {
+            mkdir($cacheDir);
+        }
 
+        foreach ($contents as $content) {
+            if (!is_array($content)) {
+                continue;
+            }
+            foreach ($content as $name => $entity) {
+                //weird nesting depending on entity type
+                if (!is_array($entity)) {
+                    continue;
+                }
+                $json = json_encode($entity);
+                $filename = $cacheDir . "$name";
+                if (is_file($filename)) {
+                    unlink($filename);
+                }
+                file_put_contents($filename, $json);
+            }
+        }
     }
-
 }
