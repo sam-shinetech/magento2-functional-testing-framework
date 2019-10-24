@@ -45,10 +45,10 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
         $fileToTime = [];
         $entityToFiles = [];
         if (is_file($fileToTimePath)) {
-            $fileToTime = $this->explodeCache(file_get_contents($fileToTimePath));
+            $fileToTime = $this->readMappingFile(file_get_contents($fileToTimePath));
         }
         if (is_file($entityToFilesPath)) {
-            $entityToFiles = $this->explodeCache(file_get_contents($entityToFilesPath));
+            $entityToFiles = $this->readMappingFile(file_get_contents($entityToFilesPath));
         }
 
         // Cache Vars
@@ -56,9 +56,10 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
         $filesToRead = [];
 
         // Read cache before anything else
-        $output = null;
+        $newOutput = null;
+        $cachedOutput = null;
         if (is_dir(self::CACHE_DATA_DIR . $this->defaultScope)) {
-            $output = $this->readCache(self::CACHE_DATA_DIR . $this->defaultScope);
+            $cachedOutput = $this->readCache(self::CACHE_DATA_DIR . $this->defaultScope);
         }
 
         // First pass to find changed files
@@ -68,7 +69,8 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
                 // Do not read
                 continue;
             }
-            $filesToRead[$fileName] = time();
+            $timeAccessed = time();
+            $filesToRead[$fileName] = $timeAccessed;
             // break cache for specific file
             $cacheInvalidated = true;
             echo 'break cache ' . $fileName . PHP_EOL;
@@ -76,6 +78,7 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
             //peek file to find entities touched
             $xmlReader = new Service();
             $dom = $xmlReader->parse($content);
+            $entityKeys = [];
             foreach ($dom as $entity) {
                 $entityKeys[] = $entity['attributes']['name'];
             }
@@ -90,9 +93,9 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
                     if (isset($filesToRead[$otherFile])) {
                         continue;
                     }
-                    $filesToRead[$otherFile] = time();
+                    $filesToRead[$otherFile] = $timeAccessed;
                 }
-                unset($output[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]][$entityKey]);
+                unset($cachedOutput[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]][$entityKey]);
             }
         }
 
@@ -136,14 +139,25 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
         }
 
         if ($configMerger) {
-            $output = $this->converter->convert($configMerger->getDom());
+            $newOutput = $this->converter->convert($configMerger->getDom());
+        }
+
+        if ($cachedOutput == null) {
+            $cachedOutput = $newOutput;
+        }
+
+        if ($newOutput !== null) {
+            $cachedOutput[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]] = array_merge(
+                $cachedOutput[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]],
+                $newOutput[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]]
+            );
         }
 
         // Rebuild cache
         if ($cacheInvalidated) {
             // Last pass to rebuild entity->filename relationship
             $entityToFiles = [];
-            foreach ($output[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]] as $key => $entity) {
+            foreach ($cachedOutput[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]] as $key => $entity) {
                 if (!is_array($entity)) {
                     continue;
                 }
@@ -152,12 +166,12 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
             foreach ($filesToRead as $file => $time) {
                 $fileToTime[$file] = $time;
             }
-            $this->buildCache($output, $this->defaultScope);
-            $this->rewriteCache($fileToTime, $fileToTimePath);
-            $this->rewriteCache($entityToFiles, $entityToFilesPath);
+            $this->buildCache($cachedOutput, $this->defaultScope);
+            $this->writeMappingFile($fileToTime, $fileToTimePath);
+            $this->writeMappingFile($entityToFiles, $entityToFilesPath);
         }
 
-        return $output;
+        return $cachedOutput;
     }
 
     /**
@@ -188,7 +202,7 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
         return $result;
     }
 
-    protected function explodeCache($contents)
+    protected function readMappingFile($contents)
     {
         $result = [];
         $lines = explode(PHP_EOL, $contents);
@@ -202,7 +216,7 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
         return $result;
     }
 
-    protected function rewriteCache($contents, $filename)
+    protected function writeMappingFile($contents, $filename)
     {
         if (is_file($filename)) {
             unlink($filename);
@@ -216,7 +230,8 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
 
     protected function readCache($cachePath)
     {
-        $contents[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]] = [];
+        $contents = $this->readCacheMetaContents();
+
         foreach (array_slice(scandir($cachePath), 2) as $cacheFile) {
             $contents[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]][$cacheFile] = json_decode(file_get_contents($cachePath . '/' . $cacheFile), true);
         }
@@ -225,10 +240,19 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
 
     protected function buildCache($contents, $type)
     {
+        // Build scaffold to tests array
+        $this->buildCacheMetaContents($contents);
         $cacheDir = self::CACHE_DATA_DIR . $type . "/";
+        if (!is_dir(self::CACHE_DIR)) {
+            mkdir(self::CACHE_DIR);
+        }
+        if (!is_dir(self::CACHE_DATA_DIR)) {
+            mkdir(self::CACHE_DATA_DIR);
+        }
         if (!is_dir($cacheDir)) {
             mkdir($cacheDir);
         }
+
 
         foreach ($contents as $content) {
             if (!is_array($content)) {
@@ -247,5 +271,36 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
                 file_put_contents($filename, $json);
             }
         }
+    }
+
+    protected function readCacheMetaContents()
+    {
+        $filePath = self::CACHE_DATA_DIR . self::SCOPE_TO_ARRAY_KEY[$this->defaultScope] . '-meta';
+        $output = json_decode(file_get_contents($filePath), true);
+
+        return $output;
+    }
+    protected function buildCacheMetaContents($contents)
+    {
+        $filePath = self::CACHE_DATA_DIR . self::SCOPE_TO_ARRAY_KEY[$this->defaultScope] . '-meta';
+        $metaArray = [];
+        $metaArray[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]] = [];
+        //outer nodeName
+        foreach ($contents as $key => $value) {
+            if (!is_array($value)) {
+                $metaArray[$key] = $value;
+            }
+        }
+        //inner stuff like nodeName
+        foreach ($contents[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]] as $key => $value) {
+            if (!is_array($value)) {
+                $metaArray[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]][$key] = $value;
+            }
+        }
+
+        if (is_file($filePath)) {
+            unlink($filePath);
+        }
+        file_put_contents($filePath, json_encode($metaArray));
     }
 }
