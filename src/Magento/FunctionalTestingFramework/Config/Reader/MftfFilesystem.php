@@ -240,8 +240,6 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
 
     protected function buildCache($contents, $type)
     {
-        // Build scaffold to tests array
-        $this->buildCacheMetaContents($contents);
         $cacheDir = self::CACHE_DATA_DIR . $type . "/";
         if (!is_dir(self::CACHE_DIR)) {
             mkdir(self::CACHE_DIR);
@@ -275,10 +273,9 @@ class MftfFilesystem extends \Magento\FunctionalTestingFramework\Config\Reader\F
 
     protected function readCacheMetaContents()
     {
-        $filePath = self::CACHE_DATA_DIR . self::SCOPE_TO_ARRAY_KEY[$this->defaultScope] . '-meta';
-        $output = json_decode(file_get_contents($filePath), true);
+        $metaArray[self::SCOPE_TO_ARRAY_KEY[$this->defaultScope]] = [];
 
-        return $output;
+        return $metaArray;
     }
     protected function buildCacheMetaContents($contents)
     {
