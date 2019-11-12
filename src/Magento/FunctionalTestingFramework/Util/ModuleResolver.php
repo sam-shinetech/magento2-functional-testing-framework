@@ -212,7 +212,10 @@ class ModuleResolver
             return $this->enabledModulePaths;
         }
 
-        $enabledModules = array_merge($this->getEnabledModules(), $this->getModuleWhitelist());
+        // Only load the modules in white list
+//        $enabledModules = array_merge($this->getEnabledModules(), $this->getModuleWhitelist());
+        $enabledModules = array_intersect($this->getEnabledModules(), $this->getModuleWhitelist());
+
         $enabledDirectoryPaths = $this->getEnabledDirectoryPaths($enabledModules, $allModulePaths);
 
         $this->enabledModulePaths = $this->applyCustomModuleMethods($enabledDirectoryPaths);

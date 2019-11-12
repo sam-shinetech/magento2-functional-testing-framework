@@ -1,0 +1,33 @@
+#!/bin/bash
+
+BASEDIR=$(dirname $0)
+SERVERDIR=$BASEDIR/server
+DRIVERDIR=$BASEDIR/driver
+SERVERPATH=$SERVERDIR/selenium-server-standalone-3.141.59.jar
+CHROMEDRIVERPATH=$DRIVERDIR/chromedriver
+
+mkdir -p SERVERDIR
+mkdir -p DRIVERDIR
+
+if [ ! -f $SERVERPATH ]; then
+    echo -e "Please download Selenium Server from https://selenium-release.storage.googleapis.com/3.141/selenium-server-standalone-3.141.59.jar into $SERVERDIR"
+fi
+
+if [ ! -f $CHROMEDRIVERPATH ]; then
+    echo -e "Please download Chrome Driver from https://chromedriver.storage.googleapis.com/index.html?path=78.0.3904.70 and unzip into $DRIVERDIR"
+fi
+
+if [ ! -f $SERVERPATH ]; then
+    exit;
+fi
+
+if [ ! -f $CHROMEDRIVERPATH ]; then
+    exit;
+fi
+
+echo -e "Working DIR: $BASEDIR"
+echo -e "Server Path: $SERVERPATH"
+echo -e "Chrome Driver Path: $CHROMEDRIVERPATH"
+echo -e "Start Server..."
+
+java -Dwebdriver.chrome.driver=$CHROMEDRIVERPATH -jar $SERVERPATH

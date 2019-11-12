@@ -16,3 +16,10 @@ dev/tests/functional/MFTF.suite.yml
 dev/tests/functional/_output
 dev/mftf.log
 dev/tests/mftf.log
+dev/tests/_output
+dev/tests/functional.suite.yml
+dev/utils/
+dev/.credentials.example
+bin/selenium/driver
+bin/selenium/server
+etc/config/envs

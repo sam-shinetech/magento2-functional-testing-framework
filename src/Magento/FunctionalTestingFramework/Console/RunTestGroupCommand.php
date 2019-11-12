@@ -92,6 +92,9 @@ class RunTestGroupCommand extends BaseGenerateCommand
             $command->run(new ArrayInput($args), $output);
         }
 
+        // Switch the .env
+        $this->switchEnv($input, $output);
+
         $codeceptionCommand = realpath(PROJECT_ROOT . '/vendor/bin/codecept') . ' run functional --verbose --steps';
 
         foreach ($groups as $group) {
