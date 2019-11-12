@@ -6,8 +6,8 @@ DRIVERDIR=$BASEDIR/driver
 SERVERPATH=$SERVERDIR/selenium-server-standalone-3.141.59.jar
 CHROMEDRIVERPATH=$DRIVERDIR/chromedriver
 
-mkdir -p SERVERDIR
-mkdir -p DRIVERDIR
+mkdir -p $SERVERDIR
+mkdir -p $DRIVERDIR
 
 if [ ! -f $SERVERPATH ]; then
     echo -e "Please download Selenium Server from https://selenium-release.storage.googleapis.com/3.141/selenium-server-standalone-3.141.59.jar into $SERVERDIR"
