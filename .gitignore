@@ -22,4 +22,4 @@ dev/utils/
 dev/.credentials.example
 bin/selenium/driver
 bin/selenium/server
-etc/config/envs
+etc/config/envs/.env.*
