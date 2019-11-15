@@ -34,5 +34,11 @@ modules:
             path: %SELENIUM_PATH%
             capabilities:
               chromeOptions:
-                args: ["--window-size=1280,1024", "--disable-extensions", "--enable-automation", "--disable-gpu", "--enable-Passthrough", "--proxy-server=%PROXY_SERVER%"]
+                args:
+                    - "--window-size=1280,1024"
+                    - "--enable-automation"
+                    - "--disable-gpu"
+                    - "--enable-Passthrough"
+                    - "--proxy-server=%PROXY_SERVER%"
+                    - "--load-extension=%CHROME_EXTENSION_AUTH%"
                 w3c: false
