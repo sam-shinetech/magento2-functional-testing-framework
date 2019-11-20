@@ -78,9 +78,6 @@ class RunTestCommand extends BaseGenerateCommand
             $command->run(new ArrayInput($args), $output);
         }
 
-        // Switch the .env
-        $this->switchEnv($input, $output);
-
         // we only generate relevant tests here so we can execute "all tests"
         $codeceptionCommand = realpath(PROJECT_ROOT . '/vendor/bin/codecept') . " run functional --verbose --steps";
 

@@ -30,12 +30,7 @@ class BaseGenerateCommand extends Command
             'r',
             InputOption::VALUE_NONE,
             'remove previous generated suites and tests'
-        )->addOption(
-            'env-template',
-            'e',
-            InputOption::VALUE_OPTIONAL,
-            'Specify the ENV template'
-        );;
+        );
     }
 
     /**
@@ -55,27 +50,5 @@ class BaseGenerateCommand extends Command
                 $output->writeln("removed files and directory $generatedDirectory");
             }
         }
-    }
-
-    /**
-     * Switch env
-     *
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     */
-    protected function switchEnv(InputInterface $input, OutputInterface $output)
-    {
-        $fileSystem = new Filesystem();
-        $envPath = TESTS_BP . DIRECTORY_SEPARATOR . '.env';
-        $envTemplate = $input->getOption('env-template') ?? 'default';
-        $envTemplateDir = FW_BP . "/etc/config/envs/";
-        $envTemplateFile = ".env.$envTemplate";
-        $envTemplatePath = $envTemplateDir . $envTemplateFile;
-        if (!$fileSystem->exists($envTemplatePath)) {
-            $envTemplateFile = '.env.default';
-            $envTemplatePath = $envTemplateDir . $envTemplateFile;
-        }
-        $fileSystem->copy($envTemplatePath, $envPath, true);
-        $output->writeln("<fg=green;options=bold>Apply ENV from $envTemplateFile</>");
     }
 }
