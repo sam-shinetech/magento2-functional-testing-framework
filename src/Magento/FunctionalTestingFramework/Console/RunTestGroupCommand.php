@@ -69,6 +69,7 @@ class RunTestGroupCommand extends BaseGenerateCommand
         $force = $input->getOption('force');
         $groups = $input->getArgument('groups');
         $remove = $input->getOption('remove');
+        $generateAllure = $input->getOption('allure-generate-report');
 
         if ($skipGeneration and $remove) {
             // "skip-generate" and "remove" options cannot be used at the same time
@@ -114,19 +115,21 @@ class RunTestGroupCommand extends BaseGenerateCommand
         );
 
         // Generate allure report
-        $reportGenerateDir = getenv('ALLURE_REPORT_GENERATE_DIR');
-        if (empty($reportGenerateDir)) {
-            $output->writeln('No ENV "ALLURE_REPORT_GENERATE_DIR" find, you can generate report manually');
-        } else {
-            $allureCommand = 'allure generate tests/_output/allure-results/ -o tests/_output/allure-report/' . $reportGenerateDir . ' --clean';
-            $process = new Process($allureCommand);
-            $process->setWorkingDirectory(TESTS_BP);
-            $process->setIdleTimeout(600);
-            $process->setTimeout(0);
-            $process->run(function ($type, $buffer) use ($output) {
-                $output->write($buffer);
-            });
-            $output->writeln("<info>Run \"allure open dev/tests/_output/allure-report/{$reportGenerateDir}\"</info>");
+        if ($generateAllure) {
+            $reportGenerateDir = getenv('ALLURE_REPORT_GENERATE_DIR');
+            if (empty($reportGenerateDir)) {
+                $output->writeln('No ENV "ALLURE_REPORT_GENERATE_DIR" find, you can generate report manually');
+            } else {
+                $allureCommand = 'allure generate tests/_output/allure-results/ -o tests/_output/allure-report/' . $reportGenerateDir . ' --clean';
+                $process = new Process($allureCommand);
+                $process->setWorkingDirectory(TESTS_BP);
+                $process->setIdleTimeout(600);
+                $process->setTimeout(0);
+                $process->run(function ($type, $buffer) use ($output) {
+                    $output->write($buffer);
+                });
+                $output->writeln("<info>Run \"allure open dev/tests/_output/allure-report/{$reportGenerateDir}\"</info>");
+            }
         }
     }
 
