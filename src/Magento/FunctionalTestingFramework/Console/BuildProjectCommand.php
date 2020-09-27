@@ -54,7 +54,7 @@ class BuildProjectCommand extends Command
                 'upgrade existing MFTF tests according to last major release requirements'
             );
         $this->envProcessor = new EnvProcessor(FilePathFormatter::format(TESTS_BP) . '.env',
-            FW_BP . '/etc/config/envs/.env.default');
+            FilePathFormatter::format(FW_BP) . '/etc/config/envs/.env.default');
         $env = $this->envProcessor->getEnv();
         foreach ($env as $key => $value) {
             $this->addOption($key, null, InputOption::VALUE_REQUIRED, '', $value);
