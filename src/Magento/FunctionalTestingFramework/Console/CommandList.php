@@ -43,6 +43,7 @@ class CommandList implements CommandListInterface
             'setup:env' => new SetupEnvCommand(),
             'static-checks' => new StaticChecksCommand(),
             'upgrade:tests' => new UpgradeTestsCommand(),
+            'switch:env' => new SwitchEnvCommand(),
         ] + $commands;
     }
 

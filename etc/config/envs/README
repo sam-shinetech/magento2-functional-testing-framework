@@ -1,0 +1,16 @@
+Example of .env:
+
+MAGENTO_BASE_URL=https://demo.magento.com/
+MAGENTO_BACKEND_NAME=admin
+MAGENTO_ADMIN_USERNAME=admin
+MAGENTO_ADMIN_PASSWORD=123456
+MAGENTO_CLI_COMMAND_PATH=https://demo.magento.com/dev/tests/acceptance/utils/command.php
+BROWSER=chrome
+MODULE_WHITELIST=Magento_Customer,Magento_Backend
+MAGENTO_BP=/var/www/html/demo.magento.com
+PROXY_SERVER=socks5://proxy.magento.com:1234
+MAGENTO_STOREFRONT_DEFAULT_USERNAME=customer
+MAGENTO_STOREFRONT_DEFAULT_PASSWORD=123456
+MAGENTO_STOREFRONT_DEFAULT_EMAIL=customer@magento.com
+
+More configurations please see https://devdocs.magento.com/mftf/docs/configuration.html.

@@ -51,11 +51,12 @@ class EnvProcessor
      * @throws TestFrameworkException
      */
     public function __construct(
-        string $envFile = ''
+        string $envFile = '',
+        string $envExampleFile = ''
     ) {
         $this->envFile = $envFile;
         $this->envExists = file_exists($envFile);
-        $this->envExampleFile = realpath(FilePathFormatter::format(FW_BP) . "etc/config/.env.example");
+        $this->envExampleFile = empty($envExampleFile) ? realpath(FilePathFormatter::format(FW_BP) . "etc/config/.env.example") : $envExampleFile;
     }
 
     /**
